@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FschoolAI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="FschoolAI">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="theme-color" content="#F4F4F6">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;color:#1d1d1f;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:#d9d9de;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.stage{position:relative;width:min(390px,100vw);height:min(844px,100dvh);overflow:hidden;background:radial-gradient(560px 700px at 50% 20%,#ffffff,#f0f0f2 62%,#e4e4e8);background-color:#F4F4F6;flex:none}
+@media (min-width:430px) and (min-height:880px){.stage{border-radius:44px;box-shadow:0 60px 120px rgba(20,20,30,.35),0 6px 24px rgba(20,20,30,.2)}}
+.glass{background:rgba(255,255,255,.55);backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);border:1px solid rgba(255,255,255,.6);box-shadow:0 12px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.8)}
+/* header */
+.hdr-course{position:absolute;top:calc(27px + env(safe-area-inset-top,0px));left:20px;font-size:12.5px;font-weight:600;opacity:.55;z-index:20}
+.timer{position:absolute;top:calc(20px + env(safe-area-inset-top,0px));right:16px;border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:600;z-index:20;font-variant-numeric:tabular-nums}
+/* timeline in the air */
+.timeline{position:absolute;top:calc(82px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:300px;height:24px;display:flex;align-items:center;z-index:20}
+.tl-track{position:relative;flex:1;height:2px;border-radius:2px;background:rgba(29,29,31,.16)}
+.tl-fill{position:absolute;left:0;top:0;height:2px;width:0;border-radius:2px;background:#1d1d1f;transition:width .8s cubic-bezier(.4,0,.3,1)}
+.tl-dot{position:absolute;top:50%;transform:translate(-50%,-50%);border-radius:50%;transition:background .4s,border-color .4s,box-shadow .4s}
+.tl-dot.todo{width:9px;height:9px;background:#f4f4f6;border:2px solid rgba(29,29,31,.25)}
+.tl-dot.now{width:13px;height:13px;background:#f4f4f6;border:3px solid #1d1d1f;box-shadow:0 0 0 7px rgba(29,29,31,.07)}
+.tl-dot.proven{width:9px;height:9px;background:#1d1d1f;border:2px solid #1d1d1f}
+/* sheet */
+.sheet{position:absolute;left:12px;right:12px;top:calc(150px + env(safe-area-inset-top,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));background:#fff;background-image:radial-gradient(rgba(29,29,31,.055) 1px,transparent 1.25px);background-size:22px 22px;border-radius:30px;box-shadow:0 50px 110px rgba(20,20,30,.16),0 4px 14px rgba(20,20,30,.07);padding:58px 24px 24px;z-index:10;overflow:hidden}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;opacity:.4}
+.sheet-title{font-size:24px;font-weight:650;margin:7px 0 4px}
+.eq{font-size:37px;font-weight:700;letter-spacing:-.01em;margin-top:12px;opacity:0;transform:translateY(6px);transition:opacity .7s ease,transform .7s ease}
+.eq.show{opacity:1;transform:translateY(0)}
+.eq .var{font-style:italic;font-weight:600}
+.board{width:100%;height:auto;margin-top:6px;display:block}
+.board text{font-family:-apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif}
+.board .hand{font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;font-weight:600}
+.fade{transition:opacity .55s ease}
+.hidden0{opacity:0;pointer-events:none}
+/* check beat */
+.check{position:absolute;left:24px;right:24px;top:190px;transition:opacity .55s ease}
+.check-q{font-size:21px;font-weight:650;line-height:1.32}
+.check-q .mono{font-weight:700;white-space:nowrap}
+.rows{margin-top:22px;display:flex;flex-direction:column;gap:12px}
+.row{appearance:none;border:0;width:100%;text-align:center;padding:17px 0;border-radius:18px;background:rgba(29,29,31,.055);font-size:23px;font-weight:700;cursor:pointer;transition:background .3s,transform .15s}
+.row:active{transform:scale(.985)}
+.row.right{background:#1d1d1f;color:#fff}
+.row.shake{animation:shake .45s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}22%{transform:translateX(-7px)}48%{transform:translateX(6px)}72%{transform:translateX(-4px)}88%{transform:translateX(2px)}}
+.replay{position:absolute;right:22px;bottom:16px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;background:none;border:0;cursor:pointer;color:rgba(29,29,31,.45);transition:opacity .6s ease;padding:6px 4px}
+.replay.show{opacity:1;pointer-events:auto}
+/* bubble */
+.bubble{position:absolute;background:rgba(255,255,255,.78);backdrop-filter:blur(14px) saturate(180%);-webkit-backdrop-filter:blur(14px) saturate(180%);border:1px solid rgba(255,255,255,.65);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:40;overflow:hidden;opacity:0;pointer-events:none;transition:width .3s ease,height .3s ease,opacity .35s ease}
+.bubble.show{opacity:1}
+.bubble-in{position:absolute;left:0;top:0;padding:10px 13px;font-size:14.5px;font-weight:550;line-height:1.35;white-space:normal;word-break:break-word}
+.bubble-measure{position:absolute;left:-9999px;top:0;visibility:hidden;padding:10px 13px;font-size:14.5px;font-weight:550;line-height:1.35;white-space:normal;word-break:break-word}
+/* buddy */
+.buddy{position:absolute;width:84px;height:84px;z-index:50;touch-action:none;cursor:grab;will-change:transform;transition:filter .6s ease,opacity .6s ease}
+.buddy:active{cursor:grabbing}
+.buddy.dim{filter:saturate(.3);opacity:.78}
+.buddy svg{display:block;width:84px;height:84px;overflow:visible}
+.orb{position:absolute;width:17px;height:17px;border-radius:50%;background:#F5A524;box-shadow:0 3px 10px rgba(245,165,36,.55);z-index:49;pointer-events:none}
+/* ask dock */
+.dock{position:absolute;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:13px 18px;font-size:15.5px;display:flex;justify-content:space-between;align-items:center;z-index:30}
+.dock .ph{opacity:.38}
+.dock .send{background:#1d1d1f;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.pulse-ring{transform-box:fill-box;transform-origin:center;animation:pulse 1.15s ease-out 2}
+@keyframes pulse{0%{transform:scale(.4);opacity:.85}100%{transform:scale(2.6);opacity:0}}
+@media (prefers-reduced-motion: reduce){.tl-fill,.eq,.fade,.check,.bubble{transition-duration:.01s}}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="hdr-course">Algebra · Linear equations</div>
+  <div class="glass timer"><span style="opacity:.6">◷</span>&nbsp;<span id="timer">00:00</span></div>
+
+  <div class="timeline"><div class="tl-track">
+    <div class="tl-fill" id="tlFill"></div>
+    <div class="tl-dot todo" id="dot0" style="left:0%"></div>
+    <div class="tl-dot todo" id="dot1" style="left:33.333%"></div>
+    <div class="tl-dot todo" id="dot2" style="left:66.667%"></div>
+    <div class="tl-dot todo" id="dot3" style="left:100%"></div>
+  </div></div>
+
+  <div class="sheet" id="sheet">
+    <div class="eyebrow">TODAY'S ONE THING</div>
+    <div class="sheet-title">Linear equations.</div>
+    <div class="eq" id="eq"><span class="var">y</span> = 2<span class="var">x</span> + 1</div>
+
+    <svg class="board" id="board" viewBox="0 0 330 252" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- axes -->
+      <g id="gAxes" opacity="0">
+        <path id="axY" d="M58 14 L58 218" stroke="#1d1d1f" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path id="axX" d="M40 218 L318 218" stroke="#1d1d1f" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <text x="318" y="238" font-size="12" fill="#1d1d1f" opacity=".55" text-anchor="end">x</text>
+        <text x="46" y="22" font-size="12" fill="#1d1d1f" opacity=".55" text-anchor="end">y</text>
+      </g>
+      <!-- ghost line: a shallower line, beat 2 -->
+      <path id="gGhost" d="M43 197 L262 68" stroke="#1d1d1f" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="6 7" opacity="0"/>
+      <!-- the line y = 2x + 1 -->
+      <path id="gLine" d="M42 221 L142 21" stroke="#1d1d1f" stroke-width="3.25" fill="none" stroke-linecap="round" opacity="0"/>
+      <!-- rise / run steps, beat 2 -->
+      <g id="gSteps" opacity="0">
+        <path id="stepRun" d="M58 188 L88 188" stroke="#1d1d1f" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path id="stepRise" d="M88 188 L88 128" stroke="#1d1d1f" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <text id="stepsNote" class="hand" x="100" y="168" font-size="16.5" fill="#1d1d1f" opacity="0">rise 2, run 1</text>
+      </g>
+      <!-- intercept, beat 3 -->
+      <g id="gIntercept" opacity="0">
+        <path id="dropLine" d="M58 188 L58 218" stroke="#1d1d1f" stroke-width="2" stroke-dasharray="4 5" fill="none" opacity=".55"/>
+        <circle id="pulseC" cx="58" cy="188" r="9" fill="none" stroke="#1d1d1f" stroke-width="2" opacity="0"/>
+        <circle id="intDot" cx="58" cy="188" r="5.5" fill="#1d1d1f"/>
+        <text id="intTick" x="47" y="193" font-size="13" font-weight="600" fill="#1d1d1f" text-anchor="end">1</text>
+        <text id="intLabel" class="hand" x="72" y="206" font-size="16.5" fill="#1d1d1f">(0, 1)</text>
+      </g>
+    </svg>
+
+    <div class="check hidden0" id="check">
+      <div class="check-q">Your turn — if <span class="mono">y = 2x + 1</span>, what is <span class="mono">y</span> when <span class="mono">x = 3</span>?</div>
+      <div class="rows">
+        <button class="row" data-v="5">5</button>
+        <button class="row" data-v="7">7</button>
+        <button class="row" data-v="9">9</button>
+      </div>
+    </div>
+    <button class="replay" id="replay">Replay</button>
+  </div>
+
+  <div class="bubble" id="bubble"><div class="bubble-in" id="bubbleIn"></div></div>
+  <div class="bubble-measure" id="bubbleMeasure"></div>
+
+  <div class="buddy" id="buddy">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <path d="M100 8C148 8 186 48 186 102C186 156 148 192 100 192C52 192 14 156 14 102C14 48 52 8 100 8Z" fill="#6ED3E8"/>
+      <rect x="70" y="86" width="9" height="30" rx="4.5" fill="#10333c"/>
+      <rect x="121" y="86" width="9" height="30" rx="4.5" fill="#10333c"/>
+      <ellipse id="buddyMouth" cx="100" cy="140" rx="11" ry="8" fill="#10333c" opacity="0"/>
+    </svg>
+  </div>
+
+  <div class="glass dock"><span class="ph">Ask, or write here…</span><span class="send">↑</span></div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const stage = $("stage"), sheet = $("sheet"), buddyEl = $("buddy");
+const bubble = $("bubble"), bubbleIn = $("bubbleIn"), bubbleMeasure = $("bubbleMeasure");
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SW = () => stage.clientWidth, SH = () => stage.clientHeight;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+window.__beat = 0;
+
+/* ---------- timer ---------- */
+let t0 = Date.now();
+setInterval(() => {
+  const s = Math.floor((Date.now() - t0) / 1000);
+  $("timer").textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+}, 250);
+
+/* ---------- buddy physics ---------- */
+const BS = 84, R = BS / 2;
+const B = {
+  x: 130, y: -110, vx: 60, vy: 0, ang: 0, va: 0,
+  mode: "free",            // free | grab | anchor | sleep
+  anchor: { x: 14, y: 560 },
+  squash: 0, squashV: 0, still: 0, chewUntil: 0, chewStart: 0, dimmed: false,
+  px: 0, py: 0, pt: 0, pvx: 0, pvy: 0, grabDX: 0, grabDY: 0, lastT: 0
+};
+function homeAnchor() {
+  // mob-idle: he lives in the air, parked on the sheet's top-left rim
+  const sr = sheet.getBoundingClientRect(), tr = stage.getBoundingClientRect();
+  return { x: 18, y: (sr.top - tr.top) - 40 };
+}
+function dimAnchor() {
+  const sr = sheet.getBoundingClientRect(), tr = stage.getBoundingClientRect();
+  return { x: SW() - BS - 16, y: (sr.top - tr.top) - 40 };
+}
+B.anchor = { x: 14, y: 560 };
+
+buddyEl.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  buddyEl.setPointerCapture(e.pointerId);
+  const tr = stage.getBoundingClientRect();
+  B.mode = "grab"; B.still = 0;
+  B.px = e.clientX; B.py = e.clientY; B.pt = performance.now(); B.pvx = 0; B.pvy = 0;
+  B.grabDX = (e.clientX - tr.left) - B.x; B.grabDY = (e.clientY - tr.top) - B.y;
+  B.vx = 0; B.vy = 0;
+});
+buddyEl.addEventListener("pointermove", e => {
+  if (B.mode !== "grab") return;
+  const tr = stage.getBoundingClientRect(), now = performance.now();
+  const nx = (e.clientX - tr.left) - B.grabDX, ny = (e.clientY - tr.top) - B.grabDY;
+  const dt = Math.max(1, now - B.pt) / 1000;
+  B.pvx = (nx - B.x) / dt; B.pvy = (ny - B.y) / dt;
+  B.x = Math.max(-8, Math.min(SW() - BS + 8, nx));
+  B.y = Math.max(-8, Math.min(SH() - BS + 8, ny));
+  B.va = B.pvx / R; B.pt = now;
+});
+function endGrab() {
+  if (B.mode !== "grab") return;
+  if (REDUCED) { B.mode = "anchor"; return; }
+  const cap = 1700;
+  B.vx = Math.max(-cap, Math.min(cap, B.pvx * 1.1));
+  B.vy = Math.max(-cap, Math.min(cap, B.pvy * 1.1));
+  B.mode = "free"; B.still = 0;
+}
+buddyEl.addEventListener("pointerup", endGrab);
+buddyEl.addEventListener("pointercancel", endGrab);
+
+let lastFrame = performance.now();
+function frame(now) {
+  let dt = Math.min(0.033, (now - lastFrame) / 1000); lastFrame = now;
+  if (dt <= 0) dt = 0.016;
+  const floorY = SH() - BS - 2, wallR = SW() - BS - 2;
+
+  if (B.mode === "free" && !REDUCED) {
+    B.vy += 2400 * dt;
+    B.x += B.vx * dt; B.y += B.vy * dt;
+    B.ang += B.va * dt; B.va *= (1 - 0.4 * dt);
+    if (B.y > floorY) {
+      B.y = floorY;
+      if (Math.abs(B.vy) > 150) { B.squashV -= Math.min(9, Math.abs(B.vy) / 130); B.vy = -B.vy * 0.6; B.vx *= 0.86; B.va = B.vx / R; }
+      else { B.vy = 0; B.ang += (B.vx / R) * dt; B.vx *= Math.max(0, 1 - 3.4 * dt); if (Math.abs(B.vx) < 14) B.vx = 0; }
+    }
+    if (B.y < 0) { B.y = 0; B.vy = -B.vy * 0.55; }
+    if (B.x < 2) { B.x = 2; B.vx = -B.vx * 0.68; B.va = B.vx / R; }
+    if (B.x > wallR) { B.x = wallR; B.vx = -B.vx * 0.68; B.va = B.vx / R; }
+    const settled = B.y >= floorY - 0.5 && B.vy === 0 && Math.abs(B.vx) < 15;
+    if (settled) { B.still += dt; if (B.still > 0.85) B.mode = "anchor"; } else B.still = 0;
+  } else if (B.mode === "anchor") {
+    const distNow = Math.hypot(B.anchor.x - B.x, B.anchor.y - B.y);
+    const k = REDUCED ? 26 : (distNow > 240 ? 120 : 62), d = REDUCED ? 13 : 12.5;
+    B.vx += ((B.anchor.x - B.x) * k - B.vx * d) * dt;
+    B.vy += ((B.anchor.y - B.y) * k - B.vy * d) * dt;
+    B.x += B.vx * dt; B.y += B.vy * dt;
+    B.ang += (B.vx / R) * dt * (REDUCED ? 0 : 1);
+    const dist = Math.hypot(B.anchor.x - B.x, B.anchor.y - B.y), spd = Math.hypot(B.vx, B.vy);
+    if (dist < 2.5 && spd < 26) { B.x = B.anchor.x; B.y = B.anchor.y; B.vx = 0; B.vy = 0; B.mode = "sleep"; }
+  } else if (B.mode === "sleep") {
+    let target = Math.round(B.ang / (Math.PI * 2)) * Math.PI * 2;
+    B.ang += (target - B.ang) * Math.min(1, 7 * dt);
+  }
+
+  // squash spring
+  B.squashV += (-170 * B.squash - 13 * B.squashV) * dt;
+  B.squash += B.squashV * dt;
+  let sq = Math.max(-0.42, Math.min(0.3, B.squash));
+  let chew = 0;
+  if (now < B.chewUntil) {
+    const ct = (now - B.chewStart) / 1300;
+    chew = 0.15 * Math.pow(Math.abs(Math.sin(ct * Math.PI * 3.2)), 1.4);
+  }
+  let breathe = B.mode === "sleep" && !REDUCED ? 0.014 * Math.sin(now / 3200 * Math.PI * 2) : 0;
+  const sy = 1 + sq - chew + breathe, sx = 1 - sq * 0.8 + chew * 0.6 - breathe;
+  buddyEl.style.transform = "translate(" + B.x + "px," + B.y + "px) rotate(" + B.ang + "rad) scale(" + sx.toFixed(3) + "," + sy.toFixed(3) + ")";
+  positionBubble();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- speech bubble ---------- */
+let bubbleSide = 1; // 1 = bubble right of buddy, -1 = left
+function sayTarget(text) {
+  bubbleMeasure.style.width = "auto";
+  bubbleMeasure.textContent = text;
+  const w = Math.min(238, Math.max(56, bubbleMeasure.offsetWidth));
+  bubbleMeasure.style.width = w + "px";
+  return { w: w, h: Math.max(42, bubbleMeasure.offsetHeight) };
+}
+function positionBubble() {
+  if (!bubble.classList.contains("show")) return;
+  const w = bubble.offsetWidth, h = bubble.offsetHeight;
+  let bx = bubbleSide > 0 ? B.x + BS - 4 : B.x - w + 4;
+  let by = B.y + 2;
+  bx = Math.max(8, Math.min(SW() - w - 8, bx));
+  by = Math.max(60, Math.min(SH() - h - 90, by));
+  bubble.style.left = bx + "px"; bubble.style.top = by + "px";
+}
+async function say(text, runId) {
+  bubbleSide = (B.x + R > SW() * 0.55) ? -1 : 1;
+  bubbleIn.textContent = "";
+  bubble.style.width = "54px"; bubble.style.height = "42px";
+  bubble.classList.add("show"); positionBubble();
+  await sleep(REDUCED ? 30 : 260);
+  const words = text.split(" ");
+  for (let i = 1; i <= words.length; i++) {
+    if (runId !== RUN) return false;
+    const part = words.slice(0, i).join(" ");
+    bubbleIn.textContent = part;
+    const t = sayTarget(part);
+    bubble.style.width = t.w + "px"; bubble.style.height = t.h + "px";
+    bubbleIn.style.width = t.w + "px";
+    if (!REDUCED) await sleep(112);
+  }
+  return runId === RUN;
+}
+async function hush(ms, runId) {
+  await sleep(ms);
+  if (runId !== RUN) return;
+  bubble.classList.remove("show");
+  await sleep(380);
+}
+
+/* ---------- board helpers ---------- */
+function drawPath(el, dur, runId) {
+  return new Promise(res => {
+    const L = el.getTotalLength();
+    el.style.transition = "none";
+    el.style.opacity = "1";
+    el.style.strokeDasharray = L; el.style.strokeDashoffset = REDUCED ? 0 : L;
+    void el.getBoundingClientRect();
+    if (REDUCED) { res(); return; }
+    el.style.transition = "stroke-dashoffset " + dur + "ms cubic-bezier(.45,0,.3,1)";
+    el.style.strokeDashoffset = "0";
+    setTimeout(res, dur);
+  });
+}
+function fadeIn(el, runId) { el.style.opacity = "1"; }
+function setDot(i, state) {
+  const d = $("dot" + i);
+  d.className = "tl-dot " + state;
+  const provenCount = [0, 1, 2, 3].filter(j => $("dot" + j).classList.contains("proven")).length;
+  const nowIdx = [0, 1, 2, 3].find(j => $("dot" + j).classList.contains("now"));
+  const upto = state === "proven" || nowIdx === undefined ? provenCount : Math.max(provenCount, nowIdx);
+  $("tlFill").style.width = (upto / 3 * 100) + "%";
+}
+
+/* ---------- the lesson ---------- */
+let RUN = 0;
+let checkArmed = false, answered = false;
+
+async function lesson(runId) {
+  const ok = () => runId === RUN;
+  // settle from drop-in
+  await sleep(REDUCED ? 60 : 1250); if (!ok()) return;
+  B.anchor = homeAnchor(); if (B.mode !== "grab") B.mode = "anchor";
+  await sleep(1000); if (!ok()) return;
+
+  // BEAT 1 — the line
+  window.__beat = 1; setDot(0, "now");
+  const s1 = say("This is a line. Every point on it obeys one rule.", runId);
+  await sleep(170); if (!ok()) return;
+  fadeIn($("gAxes"), runId);
+  await drawPath($("axY"), 650, runId); if (!ok()) return;
+  await drawPath($("axX"), 650, runId); if (!ok()) return;
+  $("gLine").style.strokeDasharray = "none";
+  await drawPath($("gLine"), 1500, runId); if (!ok()) return;
+  $("eq").classList.add("show");
+  await s1; await sleep(700); if (!ok()) return;
+  setDot(0, "proven"); await hush(500, runId); if (!ok()) return;
+
+  // BEAT 2 — slope
+  window.__beat = 2; setDot(1, "now");
+  const s2 = say("The 2 is the slope — how steep it climbs.", runId);
+  await sleep(170); if (!ok()) return;
+  const gh = $("gGhost");
+  gh.style.transition = "opacity 1s ease"; gh.style.opacity = ".38";
+  fadeIn($("gSteps"), runId);
+  await drawPath($("stepRun"), 480, runId); if (!ok()) return;
+  await drawPath($("stepRise"), 720, runId); if (!ok()) return;
+  $("stepsNote").style.transition = "opacity .6s ease"; $("stepsNote").style.opacity = "1";
+  await s2; await sleep(700); if (!ok()) return;
+  setDot(1, "proven"); await hush(500, runId); if (!ok()) return;
+
+  // BEAT 3 — intercept
+  window.__beat = 3; setDot(2, "now");
+  const s3 = say("The 1 is where it crosses — the intercept.", runId);
+  await sleep(170); if (!ok()) return;
+  fadeIn($("gIntercept"), runId);
+  const pc = $("pulseC");
+  pc.style.opacity = "1"; pc.classList.remove("pulse-ring"); void pc.getBoundingClientRect(); pc.classList.add("pulse-ring");
+  await sleep(1150); if (!ok()) return;
+  pc.style.opacity = "0";
+  await s3; await sleep(650); if (!ok()) return;
+  setDot(2, "proven"); await hush(450, runId); if (!ok()) return;
+
+  // BEAT 4 — your turn
+  window.__beat = 4; setDot(3, "now");
+  B.dimmed = true; buddyEl.classList.add("dim");
+  B.anchor = dimAnchor(); if (B.mode !== "grab") B.mode = "anchor";
+  $("board").classList.add("hidden0"); $("eq").classList.remove("show");
+  await sleep(250); if (!ok()) return;
+  $("check").classList.remove("hidden0");
+  checkArmed = true;
+}
+
+document.querySelectorAll(".row").forEach(row => {
+  row.addEventListener("click", async () => {
+    if (!checkArmed || answered) return;
+    const runId = RUN;
+    if (row.dataset.v !== "7") {
+      row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake");
+      await say("Try again — multiply first, then add.", runId);
+      await sleep(500); if (runId === RUN && !answered) bubble.classList.remove("show");
+      return;
+    }
+    answered = true; checkArmed = false;
+    row.classList.add("right");
+    setDot(3, "proven");
+    B.dimmed = false; buddyEl.classList.remove("dim");
+    B.anchor = homeAnchor(); if (B.mode !== "grab") B.mode = "anchor";
+    await sleep(REDUCED ? 80 : 950); if (runId !== RUN) return;
+    // the bite moment
+    const mouth = $("buddyMouth");
+    const orb = document.createElement("div"); orb.className = "orb";
+    orb.style.left = (B.x + BS + 26) + "px"; orb.style.top = (B.y + 52) + "px";
+    stage.appendChild(orb);
+    const dx = (B.x + R - 8) - (B.x + BS + 26), dy = (B.y + 62) - (B.y + 52);
+    if (!REDUCED && orb.animate) {
+      orb.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: "translate(" + dx + "px," + dy + "px) scale(.55)", opacity: .95 }], { duration: 450, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" });
+    }
+    await sleep(460); orb.remove();
+    mouth.style.transition = "opacity .15s"; mouth.style.opacity = "1";
+    B.chewStart = performance.now(); B.chewUntil = B.chewStart + 1300;
+    await sleep(1350);
+    mouth.style.opacity = "0";
+    if (runId !== RUN) return;
+    await say("Proved it. That's the whole machine: slope, intercept, and you.", runId);
+    $("replay").classList.add("show");
+    window.__beat = 5;
+  });
+});
+
+$("replay").addEventListener("click", () => resetDemo());
+
+function resetDemo() {
+  RUN++;
+  checkArmed = false; answered = false; window.__beat = 0;
+  t0 = Date.now();
+  bubble.classList.remove("show");
+  B.dimmed = false; buddyEl.classList.remove("dim");
+  document.querySelectorAll(".row").forEach(r => r.classList.remove("right", "shake"));
+  [0, 1, 2, 3].forEach(i => { $("dot" + i).className = "tl-dot todo"; });
+  $("tlFill").style.width = "0";
+  ["gAxes", "gSteps", "gIntercept"].forEach(id => { $(id).style.opacity = "0"; });
+  ["axY", "axX", "gLine", "stepRun", "stepRise"].forEach(id => {
+    const el = $(id); el.style.transition = "none"; el.style.strokeDasharray = "none"; el.style.strokeDashoffset = "0"; el.style.opacity = "0";
+  });
+  $("gGhost").style.transition = "none"; $("gGhost").style.opacity = "0";
+  $("gLine").style.opacity = "0";
+  $("stepsNote").style.opacity = "0";
+  $("pulseC").style.opacity = "0";
+  $("eq").classList.remove("show");
+  $("board").classList.remove("hidden0");
+  $("check").classList.add("hidden0");
+  $("replay").classList.remove("show");
+  if (B.mode !== "grab") { B.x = 130; B.y = -110; B.vx = 60; B.vy = 0; B.mode = REDUCED ? "anchor" : "free"; B.anchor = homeAnchor(); if (REDUCED) { B.x = B.anchor.x; B.y = B.anchor.y; B.mode = "sleep"; } }
+  lesson(RUN);
+}
+
+/* ---------- go ---------- */
+B.anchor = homeAnchor();
+if (REDUCED) { B.x = B.anchor.x; B.y = B.anchor.y; B.mode = "sleep"; }
+requestAnimationFrame(frame);
+lesson(RUN);
+</script>
+</body>
+</html>
