@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- room v1: Vincent's real GGRD38 day in the latest-design shell -->
+<!-- room v3: Vincent's real GGRD38 day — piece 1 as a conducted board lesson (voice + drawn board), pieces 2-4 as the day's list, in the latest-design shell -->
 <title>FschoolAI</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -77,6 +77,17 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
 @keyframes shake{0%,100%{transform:translateX(0)}22%{transform:translateX(-7px)}48%{transform:translateX(6px)}72%{transform:translateX(-4px)}88%{transform:translateX(2px)}}
 .dock .send{background:#1d1d1f;color:#fff;width:32px;height:32px;border:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none;cursor:pointer;font-family:inherit}
 @media (prefers-reduced-motion: reduce){.tl-fill,.piece-meta,.today,.check,.bubble{transition-duration:.01s}}
+.sheet-title{transition:opacity .55s ease}
+.board{position:absolute;inset:0;padding:70px 8px 16px;display:flex;flex-direction:column;z-index:5;transition:opacity .6s ease}
+.board svg{flex:1;width:100%;min-height:0;transition:opacity .8s ease}
+.board.faded svg{opacity:.20}
+.board.faded .board-cap{opacity:0}
+.board-cap{min-height:46px;padding:8px 16px 0;font-size:14.5px;font-weight:550;line-height:1.42;transition:opacity .5s ease}
+.board-start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .4s ease}
+.board-start button{background:#1d1d1f;color:#fff;border:0;border-radius:999px;padding:14px 26px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 14px 30px rgba(20,20,30,.25)}
+.board-start-sub{font-size:13px;font-weight:550;opacity:.5;text-align:center;line-height:1.5}
+.check{z-index:6}
+.replay{z-index:6}
 </style>
 </head>
 <body>
@@ -94,7 +105,7 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
 
   <div class="sheet" id="sheet">
     <div class="eyebrow">TODAY'S ONE THING</div>
-    <div class="sheet-title">McKittrick 2007.</div>
+    <div class="sheet-title" id="sheetTitle">McKittrick 2007.</div>
     <div class="piece-meta" id="pieceMeta"><span class="kind">LEARN · 25 MIN</span> — the Week 7 reading, ahead of Thursday's class. Sensing place, otherwise relations.</div>
 
     <div class="today" id="todayList">
@@ -123,10 +134,18 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
 
     <div class="check hidden0" id="check">
       <div class="check-tag">YOUR TURN — IN YOUR OWN WORDS</div>
-      <div class="check-q">From the reading: name one 'otherwise' relation to place that McKittrick describes — a way of being in place that a colonial map or property line doesn't capture — and say in one sentence how she supports it.</div>
+      <div class="check-q" id="checkQ">From the reading: name one 'otherwise' relation to place that McKittrick describes — a way of being in place that a colonial map or property line doesn't capture — and say in one sentence how she supports it.</div>
       <div class="check-hint">Answer below, in the ask bar.</div>
     </div>
     <button class="replay" id="replay">Replay</button>
+    <div class="board hidden0" id="board">
+      <svg id="boardSvg" viewBox="0 0 342 430" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+      <div class="board-cap" id="boardCap"></div>
+      <div class="board-start" id="boardStart">
+        <button id="startBtn" type="button">▶ Start the lesson</button>
+        <div class="board-start-sub">Listen — the board draws while it speaks.<br>12 short parts · McKittrick 2007</div>
+      </div>
+    </div>
   </div>
 
   <div class="bubble" id="bubble"><div class="bubble-in" id="bubbleIn"></div></div>
@@ -334,13 +353,159 @@ function setDot(i, state) {
   refreshFill();
 }
 
-/* ---------- the day: piece 1 of 4 ---------- */
+/* ---------- piece 1 as a conducted board lesson ----------
+   Content rule: ONLY what the Oct 20 package holds for this piece —
+   McKittrick 2007, Week 7 "Sensing place / otherwise relations", and the
+   check's own framing: a way of being in place that a colonial map or
+   property line doesn't capture. The board draws that claim, stroke by
+   stroke, while the voice speaks it. Nothing else is taught. */
+const CHECK_Q = "From the reading: name one 'otherwise' relation to place that McKittrick describes — a way of being in place that a colonial map or property line doesn't capture — and say in one sentence how she supports it.";
+const NUDGE = "A little more — name the relation first, then one sentence on how she supports it.";
+const PROVED_LINE = "Proved it — piece one is in. Next up: Place-Thought recall, fifteen minutes.";
+
+/* board strokes: the colonial box is drawn in pale grey; the relations
+   web is ink. Nodes are dots that fade in. */
+const STROKES = {
+  land:  { d: "M18,302 C90,272 132,322 202,292 C262,266 300,300 324,282", w: 2.4 },
+  river: { d: "M76,398 C88,362 70,330 122,272 C162,226 152,182 202,138", w: 2.4 },
+  boxT:  { d: "M96,118 L288,118", w: 2, grey: 1 },
+  boxR:  { d: "M288,118 L288,252", w: 2, grey: 1 },
+  boxB:  { d: "M288,252 L96,252", w: 2, grey: 1 },
+  boxL:  { d: "M96,252 L96,118", w: 2, grey: 1 },
+  house: { d: "M168,208 L168,168 L206,142 L244,168 L244,208", w: 2, grey: 1 },
+  tag:   { d: "M150,276 L234,276", w: 2, grey: 1 },
+  nA: { dot: [58, 88] }, nB: { dot: [150, 58] }, nC: { dot: [252, 80] },
+  nD: { dot: [312, 182] }, nE: { dot: [230, 332] }, nF: { dot: [88, 352] }, nG: { dot: [38, 212] },
+  aAB: { d: "M58,88 Q104,52 150,58", w: 2.6 },
+  aBC: { d: "M150,58 Q202,44 252,80", w: 2.6 },
+  aCD: { d: "M252,80 Q302,122 312,182", w: 2.6 },
+  aAG: { d: "M58,88 Q34,150 38,212", w: 2.6 },
+  aGF: { d: "M38,212 Q54,302 88,352", w: 2.6 },
+  aFE: { d: "M88,352 Q158,368 230,332", w: 2.6 },
+  aED: { d: "M230,332 Q292,272 312,182", w: 2.6 },
+  aAE: { d: "M58,88 Q176,206 230,332", w: 2.6 },
+  aGC: { d: "M38,212 Q158,118 252,80", w: 2.6 },
+  ring: { d: "M21,205 A150,150 0 1,1 321,205 A150,150 0 1,1 21,205", w: 1.6 }
+};
+/* each beat: one spoken sentence + the strokes it draws */
+const BEATS = [
+  { say: "Start with a place. Not a point on a map — a place.", draw: ["land"] },
+  { say: "There is land, and there is water, moving through it.", draw: ["river"] },
+  { say: "Then a map gets drawn over it. Straight lines. Hard corners.", draw: ["boxT", "boxR"] },
+  { say: "A property line. Inside is owned. Outside is not. The box decides.", draw: ["boxB", "boxL", "house"] },
+  { say: "That is the map's one story about the place: owned, bounded, measured.", draw: ["tag"] },
+  { say: "McKittrick asks a simple question: what do those lines not capture?", draw: ["nA", "nB", "nC"] },
+  { say: "Because a place is also its relations — who, and what, is connected to what.", draw: ["aAB", "aBC"] },
+  { say: "Relations cross the property line like it isn't even there.", draw: ["aAE"] },
+  { say: "Some relations are journeys — arrivals, leavings, returns.", draw: ["nG", "nF", "aAG", "aGF"] },
+  { say: "They connect land to water, people to place, and place to place.", draw: ["nD", "nE", "aCD", "aFE", "aED"] },
+  { say: "You sense a place by being in those relations — not only by measuring it.", draw: ["aGC"] },
+  { say: "Those are the otherwise relations: the ways of being in place that a colonial map, and its property lines, never captured.", draw: ["ring"] }
+];
+
+/* labels: the drawing is the explanation, located AT the thing it
+   explains — each label fades in beside its visual as its beat speaks. */
+const LABELS = {
+  place:     { x: 171, y: 422, a: "middle", t: "PLACE" },
+  land:      { x: 150, y: 340, a: "middle", t: "LAND" },
+  water:     { x: 100, y: 246, a: "end",    t: "WATER" },
+  box:       { x: 192, y: 102, a: "middle", t: "COLONIAL MAP · PROPERTY LINES" },
+  relations: { x: 178, y: 34,  a: "middle", t: "RELATIONS" },
+  journeys:  { x: 122, y: 404, a: "middle", t: "JOURNEYS" },
+  otherwise: { x: 171, y: 22,  a: "middle", t: "OTHERWISE RELATIONS" }
+};
+const BEAT_LABELS = { 1: ["place", "land"], 2: ["water"], 3: ["box"], 7: ["relations"], 9: ["journeys"], 12: ["otherwise"] };
+
 let RUN = 0;
 let checkArmed = false, answered = false;
+window.__lessonBeat = 0;
+window.__lessonDone = false;
+window.__boardStarted = false;
 
+const dockForm = $("dockForm"), dockInput = $("dockInput");
+function wordCount(s) { return s.trim().split(/\s+/).filter(Boolean).length; }
+
+/* ---------- board construction ---------- */
+const board = $("board"), boardSvg = $("boardSvg"), boardCap = $("boardCap"), boardStart = $("boardStart");
+const NS = "http://www.w3.org/2000/svg";
+const strokeEls = {};
+for (const [id, s] of Object.entries(STROKES)) {
+  let el;
+  if (s.dot) {
+    el = document.createElementNS(NS, "circle");
+    el.setAttribute("cx", s.dot[0]); el.setAttribute("cy", s.dot[1]); el.setAttribute("r", 4.5);
+    el.setAttribute("fill", "#1d1d1f"); el.style.opacity = "0";
+  } else {
+    el = document.createElementNS(NS, "path");
+    el.setAttribute("d", s.d);
+    el.setAttribute("fill", "none");
+    el.setAttribute("stroke", s.grey ? "rgba(29,29,31,.30)" : "#1d1d1f");
+    el.setAttribute("stroke-width", s.w);
+    el.setAttribute("stroke-linecap", "round");
+  }
+  boardSvg.appendChild(el);
+  strokeEls[id] = el;
+}
+const labelEls = {};
+for (const [id, L] of Object.entries(LABELS)) {
+  const el = document.createElementNS(NS, "text");
+  el.setAttribute("x", L.x); el.setAttribute("y", L.y);
+  el.setAttribute("text-anchor", L.a);
+  el.setAttribute("font-size", "10.5"); el.setAttribute("font-weight", "700");
+  el.setAttribute("letter-spacing", ".08em");
+  el.setAttribute("fill", "rgba(29,29,31,.55)");
+  el.textContent = L.t;
+  el.style.opacity = "0"; el.style.transition = "opacity .7s ease";
+  boardSvg.appendChild(el);
+  labelEls[id] = el;
+}
+function primeStrokes() {
+  for (const id of Object.keys(LABELS)) labelEls[id].style.opacity = "0";
+  for (const [id, s] of Object.entries(STROKES)) {
+    const el = strokeEls[id];
+    if (s.dot) { el.style.opacity = "0"; continue; }
+    const len = el.getTotalLength();
+    el.style.strokeDasharray = len;
+    el.style.strokeDashoffset = len;
+    el.dataset.len = len;
+  }
+}
+function drawStroke(id, dur) {
+  return new Promise(res => {
+    const s = STROKES[id], el = strokeEls[id];
+    if (REDUCED) { if (s.dot) el.style.opacity = "1"; else el.style.strokeDashoffset = "0"; res(); return; }
+    const t0 = performance.now();
+    (function tick(now) {
+      const p = Math.min(1, (now - t0) / dur);
+      const e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      if (s.dot) el.style.opacity = String(e);
+      else el.style.strokeDashoffset = String(el.dataset.len * (1 - e));
+      if (p < 1) requestAnimationFrame(tick); else res();
+    })(t0);
+  });
+}
+
+/* ---------- voice (Web Speech API — no external TTS) ---------- */
+function speak(text) {
+  return new Promise(res => {
+    if (!("speechSynthesis" in window)) { res(); return; }
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.95; u.pitch = 1;
+      let done = false;
+      const fin = () => { if (!done) { done = true; res(); } };
+      u.onend = fin; u.onerror = fin;
+      speechSynthesis.speak(u);
+      // fallback: if the engine never answers (no voice, headless), the
+      // drawing still paces the lesson — speech end wins when it fires.
+      setTimeout(fin, Math.max(4500, text.split(" ").length * 430 + 1800));
+    } catch (e) { res(); }
+  });
+}
+
+/* ---------- lesson flow ---------- */
 async function lesson(runId) {
   const ok = () => runId === RUN;
-  // settle from drop-in
   await sleep(REDUCED ? 60 : 1250); if (!ok()) return;
   B.anchor = homeAnchor(); if (B.mode !== "grab") B.mode = "anchor";
   await sleep(900); if (!ok()) return;
@@ -349,32 +514,64 @@ async function lesson(runId) {
   await say("Your day is set — four pieces, ninety minutes. I hold the plan; you just do the next thing.", runId);
   if (!ok()) return;
   await sleep(650); if (!ok()) return;
-  await say("First piece: the Week 7 reading. McKittrick 2007 — sensing place, otherwise relations.", runId);
+  await say("First piece is a lesson. I talk, the board draws — you just watch and listen.", runId);
   if (!ok()) return;
   await sleep(800); if (!ok()) return;
   await hush(300, runId); if (!ok()) return;
 
-  // YOUR TURN — the check for piece 1
+  // the sheet becomes a board; the start waits for a tap (iOS audio rule)
   window.__beat = 2;
-  B.dimmed = true; buddyEl.classList.add("dim");
-  B.anchor = dimAnchor(); if (B.mode !== "grab") B.mode = "anchor";
   $("todayList").classList.add("hidden0");
   $("pieceMeta").classList.add("hidden0");
+  $("sheetTitle").classList.add("hidden0");
+  primeStrokes();
+  board.classList.remove("hidden0");
+}
+
+async function runBeats(runId) {
+  const ok = () => runId === RUN;
+  boardStart.classList.add("hidden0");
+  window.__boardStarted = true;
+  try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) {}
+  for (let i = 0; i < BEATS.length; i++) {
+    if (!ok()) return;
+    window.__lessonBeat = i + 1;
+    const beat = BEATS[i];
+    boardCap.textContent = beat.say;
+    (BEAT_LABELS[i + 1] || []).forEach(id => { labelEls[id].style.opacity = "1"; });
+    const voice = speak(beat.say);
+    for (const id of beat.draw) {
+      if (!ok()) return;
+      await drawStroke(id, beat.draw.length > 2 ? 850 : 1500);
+    }
+    await voice;
+    if (!ok()) return;
+    await sleep(450);
+  }
+  if (!ok()) return;
+  window.__lessonDone = true;
+  boardCap.textContent = "";
+  board.classList.add("faded");
+  await sleep(650); if (!ok()) return;
+
+  // YOUR TURN — the check, on the board, drawing still faintly behind it
+  window.__beat = 3;
+  B.dimmed = true; buddyEl.classList.add("dim");
+  B.anchor = dimAnchor(); if (B.mode !== "grab") B.mode = "anchor";
   await sleep(250); if (!ok()) return;
   $("check").classList.remove("hidden0");
   checkArmed = true;
   dockInput.placeholder = "Type your answer…";
 }
+$("startBtn").addEventListener("click", () => { if (!window.__boardStarted) runBeats(RUN); });
+boardStart.addEventListener("click", e => { if (e.target === boardStart && !window.__boardStarted) runBeats(RUN); });
 
 /* ---------- the check: typed in the dock, in the student's own words.
    Prototype grading: a substantive answer (>= 8 words) proves the piece. */
-const dockForm = $("dockForm"), dockInput = $("dockInput");
-function wordCount(s) { return s.trim().split(/\s+/).filter(Boolean).length; }
-
 async function shortAttempt() {
   const runId = RUN;
   dockForm.classList.remove("shake"); void dockForm.offsetWidth; dockForm.classList.add("shake");
-  await say("A little more — name the relation first, then one sentence on how she supports it.", runId);
+  await say(NUDGE, runId);
   await sleep(600); if (runId === RUN && !answered) bubble.classList.remove("show");
 }
 
@@ -405,9 +602,9 @@ async function proved() {
   await sleep(1350);
   mouth.style.opacity = "0";
   if (runId !== RUN) return;
-  await say("Proved it — piece one is in. Next up: Place-Thought recall, fifteen minutes.", runId);
+  await say(PROVED_LINE, runId);
   $("replay").classList.add("show");
-  window.__beat = 3;
+  window.__beat = 4;
   window.__proved = true;
 }
 
@@ -415,14 +612,13 @@ dockForm.addEventListener("submit", e => {
   e.preventDefault();
   const raw = dockInput.value.trim();
   if (!raw) return;
-  dockInput.value = "";
   if (checkArmed && !answered) {
+    dockInput.value = "";
     if (wordCount(raw) >= 8) { proved(); return; }
     shortAttempt();
     return;
   }
-  // outside the check the dock stays a quiet field — sending just clears it
-  dockInput.blur();
+  // no check armed: leave the words in the dock — never silently eat them
 });
 
 $("replay").addEventListener("click", () => resetRoom());
@@ -430,6 +626,8 @@ $("replay").addEventListener("click", () => resetRoom());
 function resetRoom() {
   RUN++;
   checkArmed = false; answered = false; window.__beat = 0; window.__proved = false;
+  window.__lessonBeat = 0; window.__lessonDone = false; window.__boardStarted = false;
+  try { speechSynthesis.cancel(); } catch (e) {}
   t0 = Date.now();
   dockInput.value = "";
   dockInput.placeholder = "Ask, or write here…";
@@ -441,6 +639,12 @@ function resetRoom() {
   $("ti1").className = "t-item"; $("ts1").textContent = "";
   $("ti2").className = "t-item"; $("ts2").textContent = "";
   $("ti3").className = "t-item"; $("ts3").textContent = "";
+  board.classList.add("hidden0");
+  board.classList.remove("faded");
+  boardStart.classList.remove("hidden0");
+  boardCap.textContent = "";
+  primeStrokes();
+  $("sheetTitle").classList.remove("hidden0");
   $("todayList").classList.remove("hidden0");
   $("pieceMeta").classList.remove("hidden0");
   $("check").classList.add("hidden0");
