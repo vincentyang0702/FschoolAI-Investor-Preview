@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- demo v2: adaptive height + dock answers -->
 <title>FschoolAI</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +14,7 @@
 *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;color:#1d1d1f;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{background:#d9d9de;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.stage{position:relative;width:min(390px,100vw);height:min(844px,100dvh);overflow:hidden;background:radial-gradient(560px 700px at 50% 20%,#ffffff,#f0f0f2 62%,#e4e4e8);background-color:#F4F4F6;flex:none}
+.stage{position:relative;width:min(390px,100vw);height:min(844px,100dvh);overflow:hidden;background:radial-gradient(560px 700px at 50% 20%,#ffffff,#f0f0f2 62%,#e4e4e8);background-color:#F4F4F6;flex:none;--padTop:58px;--sheetTop:150px;--sheetBottom:96px;--checkGap:34px;--rowPad:17px;--rowsMt:22px}
 @media (min-width:430px) and (min-height:880px){.stage{border-radius:44px;box-shadow:0 60px 120px rgba(20,20,30,.35),0 6px 24px rgba(20,20,30,.2)}}
 .glass{background:rgba(255,255,255,.55);backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);border:1px solid rgba(255,255,255,.6);box-shadow:0 12px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.8)}
 /* header */
@@ -28,7 +29,7 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
 .tl-dot.now{width:13px;height:13px;background:#f4f4f6;border:3px solid #1d1d1f;box-shadow:0 0 0 7px rgba(29,29,31,.07)}
 .tl-dot.proven{width:9px;height:9px;background:#1d1d1f;border:2px solid #1d1d1f}
 /* sheet */
-.sheet{position:absolute;left:12px;right:12px;top:calc(150px + env(safe-area-inset-top,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));background:#fff;background-image:radial-gradient(rgba(29,29,31,.055) 1px,transparent 1.25px);background-size:22px 22px;border-radius:30px;box-shadow:0 50px 110px rgba(20,20,30,.16),0 4px 14px rgba(20,20,30,.07);padding:58px 24px 24px;z-index:10;overflow:hidden}
+.sheet{position:absolute;left:12px;right:12px;top:calc(var(--sheetTop) + env(safe-area-inset-top,0px));bottom:calc(var(--sheetBottom) + env(safe-area-inset-bottom,0px));background:#fff;background-image:radial-gradient(rgba(29,29,31,.055) 1px,transparent 1.25px);background-size:22px 22px;border-radius:30px;box-shadow:0 50px 110px rgba(20,20,30,.16),0 4px 14px rgba(20,20,30,.07);padding:var(--padTop) 24px 24px;z-index:10;overflow:hidden}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;opacity:.4}
 .sheet-title{font-size:24px;font-weight:650;margin:7px 0 4px}
 .eq{font-size:37px;font-weight:700;letter-spacing:-.01em;margin-top:12px;opacity:0;transform:translateY(6px);transition:opacity .7s ease,transform .7s ease}
@@ -40,11 +41,11 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
 .fade{transition:opacity .55s ease}
 .hidden0{opacity:0;pointer-events:none}
 /* check beat */
-.check{position:absolute;left:24px;right:24px;top:190px;transition:opacity .55s ease}
+.check{position:absolute;left:24px;right:24px;top:calc(var(--padTop) + 51px + var(--checkGap));transition:opacity .55s ease}
 .check-q{font-size:21px;font-weight:650;line-height:1.32}
 .check-q .mono{font-weight:700;white-space:nowrap}
-.rows{margin-top:22px;display:flex;flex-direction:column;gap:12px}
-.row{appearance:none;border:0;width:100%;text-align:center;padding:17px 0;border-radius:18px;background:rgba(29,29,31,.055);font-size:23px;font-weight:700;cursor:pointer;transition:background .3s,transform .15s}
+.rows{margin-top:var(--rowsMt);display:flex;flex-direction:column;gap:12px}
+.row{appearance:none;border:0;width:100%;text-align:center;padding:var(--rowPad) 0;border-radius:18px;background:rgba(29,29,31,.055);font-size:23px;font-weight:700;cursor:pointer;transition:background .3s,transform .15s}
 .row:active{transform:scale(.985)}
 .row.right{background:#1d1d1f;color:#fff}
 .row.shake{animation:shake .45s ease}
@@ -64,8 +65,10 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
 .orb{position:absolute;width:17px;height:17px;border-radius:50%;background:#F5A524;box-shadow:0 3px 10px rgba(245,165,36,.55);z-index:49;pointer-events:none}
 /* ask dock */
 .dock{position:absolute;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:13px 18px;font-size:15.5px;display:flex;justify-content:space-between;align-items:center;z-index:30}
-.dock .ph{opacity:.38}
-.dock .send{background:#1d1d1f;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.dock input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:16px;font-weight:500;color:#1d1d1f;font-family:inherit}
+.dock input::placeholder{color:rgba(29,29,31,.38)}
+.dock.shake{animation:shake .45s ease}
+.dock .send{background:#1d1d1f;color:#fff;width:32px;height:32px;border:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none;cursor:pointer;font-family:inherit}
 .pulse-ring{transform-box:fill-box;transform-origin:center;animation:pulse 1.15s ease-out 2}
 @keyframes pulse{0%{transform:scale(.4);opacity:.85}100%{transform:scale(2.6);opacity:0}}
 @media (prefers-reduced-motion: reduce){.tl-fill,.eq,.fade,.check,.bubble{transition-duration:.01s}}
@@ -140,7 +143,7 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
     </svg>
   </div>
 
-  <div class="glass dock"><span class="ph">Ask, or write here…</span><span class="send">↑</span></div>
+  <form class="glass dock" id="dockForm"><input id="dockInput" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ask, or write here…" aria-label="Ask, or write your answer here"><button class="send" type="submit" aria-label="Send">↑</button></form>
 </div>
 
 <script>
@@ -152,6 +155,23 @@ const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const SW = () => stage.clientWidth, SH = () => stage.clientHeight;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 window.__beat = 0;
+
+/* ---------- adaptive height: as the viewport shrinks, the flexible gaps
+   (sheet offset, sheet padding, heading→question gap, row padding) compress —
+   the content itself is never clipped. 844px = the locked mob-idle values. */
+function fit() {
+  const h = stage.clientHeight;
+  const t = Math.max(0, Math.min(1, (h - 620) / 224));
+  const L = (a, b) => (a + (b - a) * t).toFixed(1) + "px";
+  stage.style.setProperty("--padTop", L(34, 58));
+  stage.style.setProperty("--sheetTop", L(132, 150));
+  stage.style.setProperty("--sheetBottom", L(86, 96));
+  stage.style.setProperty("--checkGap", L(22, 34));
+  stage.style.setProperty("--rowPad", L(13, 17));
+  stage.style.setProperty("--rowsMt", L(16, 22));
+}
+window.addEventListener("resize", fit);
+window.addEventListener("load", fit);
 
 /* ---------- timer ---------- */
 let t0 = Date.now();
@@ -384,43 +404,66 @@ async function lesson(runId) {
   await sleep(250); if (!ok()) return;
   $("check").classList.remove("hidden0");
   checkArmed = true;
+  dockInput.placeholder = "Or type your answer…";
+  dockInput.inputMode = "numeric";
 }
 
+/* ---------- grading: tapping a row and typing in the dock are the same act ---------- */
+const dockForm = $("dockForm"), dockInput = $("dockInput");
+async function wrongAttempt(shakeEl) {
+  const runId = RUN;
+  if (shakeEl) { shakeEl.classList.remove("shake"); void shakeEl.offsetWidth; shakeEl.classList.add("shake"); }
+  await say("Try again — multiply first, then add.", runId);
+  await sleep(500); if (runId === RUN && !answered) bubble.classList.remove("show");
+}
+async function proved(rowEl) {
+  if (answered) return;
+  answered = true; checkArmed = false;
+  const runId = RUN;
+  (rowEl || document.querySelector('.row[data-v="7"]')).classList.add("right");
+  setDot(3, "proven");
+  B.dimmed = false; buddyEl.classList.remove("dim");
+  B.anchor = homeAnchor(); if (B.mode !== "grab") B.mode = "anchor";
+  await sleep(REDUCED ? 80 : 950); if (runId !== RUN) return;
+  // the bite moment
+  const mouth = $("buddyMouth");
+  const orb = document.createElement("div"); orb.className = "orb";
+  orb.style.left = (B.x + BS + 26) + "px"; orb.style.top = (B.y + 52) + "px";
+  stage.appendChild(orb);
+  const dx = (B.x + R - 8) - (B.x + BS + 26), dy = (B.y + 62) - (B.y + 52);
+  if (!REDUCED && orb.animate) {
+    orb.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: "translate(" + dx + "px," + dy + "px) scale(.55)", opacity: .95 }], { duration: 450, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" });
+  }
+  await sleep(460); orb.remove();
+  mouth.style.transition = "opacity .15s"; mouth.style.opacity = "1";
+  B.chewStart = performance.now(); B.chewUntil = B.chewStart + 1300;
+  await sleep(1350);
+  mouth.style.opacity = "0";
+  if (runId !== RUN) return;
+  await say("Proved it. That's the whole machine: slope, intercept, and you.", runId);
+  $("replay").classList.add("show");
+  window.__beat = 5;
+}
 document.querySelectorAll(".row").forEach(row => {
-  row.addEventListener("click", async () => {
+  row.addEventListener("click", () => {
     if (!checkArmed || answered) return;
-    const runId = RUN;
-    if (row.dataset.v !== "7") {
-      row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake");
-      await say("Try again — multiply first, then add.", runId);
-      await sleep(500); if (runId === RUN && !answered) bubble.classList.remove("show");
-      return;
-    }
-    answered = true; checkArmed = false;
-    row.classList.add("right");
-    setDot(3, "proven");
-    B.dimmed = false; buddyEl.classList.remove("dim");
-    B.anchor = homeAnchor(); if (B.mode !== "grab") B.mode = "anchor";
-    await sleep(REDUCED ? 80 : 950); if (runId !== RUN) return;
-    // the bite moment
-    const mouth = $("buddyMouth");
-    const orb = document.createElement("div"); orb.className = "orb";
-    orb.style.left = (B.x + BS + 26) + "px"; orb.style.top = (B.y + 52) + "px";
-    stage.appendChild(orb);
-    const dx = (B.x + R - 8) - (B.x + BS + 26), dy = (B.y + 62) - (B.y + 52);
-    if (!REDUCED && orb.animate) {
-      orb.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: "translate(" + dx + "px," + dy + "px) scale(.55)", opacity: .95 }], { duration: 450, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" });
-    }
-    await sleep(460); orb.remove();
-    mouth.style.transition = "opacity .15s"; mouth.style.opacity = "1";
-    B.chewStart = performance.now(); B.chewUntil = B.chewStart + 1300;
-    await sleep(1350);
-    mouth.style.opacity = "0";
-    if (runId !== RUN) return;
-    await say("Proved it. That's the whole machine: slope, intercept, and you.", runId);
-    $("replay").classList.add("show");
-    window.__beat = 5;
+    if (row.dataset.v !== "7") { wrongAttempt(row); return; }
+    proved(row);
   });
+});
+dockForm.addEventListener("submit", e => {
+  e.preventDefault();
+  const raw = dockInput.value.trim();
+  if (!raw) return;
+  dockInput.value = "";
+  if (checkArmed && !answered) {
+    const m = raw.replace(",", ".").match(/-?\d+(\.\d+)?/);
+    if (m && parseFloat(m[0]) === 7) { proved(null); return; }
+    wrongAttempt(dockForm);
+    return;
+  }
+  // outside the check the dock stays a quiet field — sending just clears it
+  dockInput.blur();
 });
 
 $("replay").addEventListener("click", () => resetDemo());
@@ -429,6 +472,9 @@ function resetDemo() {
   RUN++;
   checkArmed = false; answered = false; window.__beat = 0;
   t0 = Date.now();
+  dockInput.value = "";
+  dockInput.placeholder = "Ask, or write here…";
+  dockInput.inputMode = "text";
   bubble.classList.remove("show");
   B.dimmed = false; buddyEl.classList.remove("dim");
   document.querySelectorAll(".row").forEach(r => r.classList.remove("right", "shake"));
@@ -451,6 +497,7 @@ function resetDemo() {
 }
 
 /* ---------- go ---------- */
+fit();
 B.anchor = homeAnchor();
 if (REDUCED) { B.x = B.anchor.x; B.y = B.anchor.y; B.mode = "sleep"; }
 requestAnimationFrame(frame);
