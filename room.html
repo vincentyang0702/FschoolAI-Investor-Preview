@@ -57,6 +57,9 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
 .check-tag{font-size:10.5px;font-weight:700;letter-spacing:.14em;opacity:.4;margin-bottom:12px}
 .check-q{font-size:19px;font-weight:650;line-height:1.42}
 .check-hint{font-size:13.5px;font-weight:550;opacity:.45;margin-top:16px}
+.check-choices{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.check-choice{font:inherit;font-size:14.5px;font-weight:550;line-height:1.35;text-align:left;color:#1d1d1f;padding:11px 13px;border-radius:12px;border:1px solid rgba(29,29,31,.18);background:rgba(255,255,255,.66);cursor:pointer}
+.check-choice:active{background:rgba(29,29,31,.08)}
 .replay{position:absolute;right:22px;bottom:16px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;background:none;border:0;cursor:pointer;color:rgba(29,29,31,.45);transition:opacity .6s ease;padding:6px 4px}
 .replay.show{opacity:1;pointer-events:auto}
 #nextPiece{right:auto;left:22px}
@@ -153,6 +156,7 @@ body{background:#d9d9de;display:flex;align-items:center;justify-content:center;o
       <div class="check-tag">YOUR TURN — IN YOUR OWN WORDS</div>
       <div class="check-q" id="checkQ">From the reading: name one 'otherwise' relation to place that McKittrick describes — a way of being in place that a colonial map or property line doesn't capture — and say in one sentence how she supports it.</div>
       <div class="check-hint">Answer below, in the ask bar.</div>
+      <div class="check-choices" id="checkChoices"></div>
     </div>
     <button class="replay" id="replay">Replay</button>
     <button class="replay" id="nextPiece">Next piece →</button>
@@ -1445,10 +1449,10 @@ function applyLearnerStateToUI() {
    NO-SUPPORT → ABSTAIN. Lexicons are the spec's, with labels so every
    call is explainable from its hits. ----- */
 const LEX = {
-  relSpec: [["kinship", /kinship|\bkin\b/], ["care", /\bcare\b|\bcaring\b/], ["ceremony", /ceremon/], ["stories", /\bstor(y|ies)\b/], ["treaty", /treaty/], ["belong", /belong/], ["return", /return/], ["ancestor", /ancestor/], ["obligation", /obligation/], ["ties", /\bties\b|\btying\b/], ["community", /communit/], ["generations", /generation/], ["connections", /connection|connected/]],
+  relSpec: [["kinship", /kinship|\bkin\b/], ["care", /\bcare\b|\bcaring\b/], ["ceremony", /ceremon/], ["stories", /\bstor(y|ies)\b/], ["treaty", /treaty/], ["belong", /belong/], ["return", /return/], ["ancestor", /ancestor/], ["obligation", /obligation/], ["ties", /\bties\b|\btying\b/], ["community", /communit/], ["generations", /generation/], ["connections", /connection|connected/], ["family", /\bfamil(y|ies)\b/], ["relationships", /relationships?/]],
   relAny: [["relation", /\brelations?\b/]],
-  sup: [["because", /because/], ["she shows", /she shows/], ["she describes", /she describes/], ["she gives", /she gives/], ["she points", /she points/], ["for example", /for example/], ["she writes about how", /she writes about how/], ["in the reading she", /in the reading she/], ["she supports", /she supports/], ["by showing", /by showing/]],
-  con: [["makes the place", /makes? (the|that) place/], ["part of what makes", /part of what makes/], ["without them/it", /without (them|it)\b/], ["place is the relations", /place is (the|its) relations/], ["held together by", /held together by/], ["are the place", /\bare the place\b/], ["constitutive", /constitut/]],
+  sup: [["because", /because/], ["she shows", /she shows/], ["she describes", /she describes/], ["she gives", /she gives/], ["she points", /she points/], ["for example", /for example/], ["she writes about how", /she writes about how/], ["in the reading she", /in the reading she/], ["she supports", /she supports/], ["by showing", /by showing/], ["example", /\bexample\b/], ["built on", /built on|builds? (it )?on/], ["shown by/in", /shown (by|in)/], ["such as", /such as/], ["like when", /like when/], ["she says/writes/talks/argues", /she (says|writes|talks|argues)\b/], ["mckittrick verb", /mckittrick (shows|says|writes|describes|gives|points|argues|talks)\b/], ["the reading verb", /the reading (shows|gives|describes|presents)\b/], ["in the reading", /in the reading\b/], ["evidence", /\bevidence\b/], ["supported by", /supported by/]],
+  con: [["makes the place", /makes? (the|that) place/], ["part of what makes", /part of what makes/], ["without them/it", /without (them|it)\b/], ["place is the relations", /place is (the|its) relations/], ["held together by", /held together by/], ["are the place", /\bare the place\b/], ["constitutive", /constitut/], ["is the place", /\bis the place\b/], ["makes it a place", /makes? it a place/]],
   adv: [["on top of", /on top of (that|it)/], ["also", /\balso\b/], ["in addition", /in addition/], ["as well", /as well\b/], ["extra", /\bextra\b/], ["visit", /\bvisit/], ["travel there", /travel there/], ["stories there", /stories there/]],
   m1: [["located at", /located at/], ["coordinates", /coordinates?/], ["address", /\baddress\b/], ["on the map", /on the map/], ["gps", /\bgps\b/], ["spot where", /the spot where/], ["exact location", /exact location/]],
   m3: [["doesn't show", /doesn'?t show|does not show/], ["leaves/left out", /leaves? out|left out/], ["missing", /\bmissing\b/], ["only shows", /only shows/], ["not on the map", /not on the map/], ["doesn't capture", /doesn'?t capture|does not capture/]],
@@ -1489,24 +1493,49 @@ function classify(rawText, opts = {}) {
   return { verdict, hits, scores, relSpec, relAny, sup, con, adv, wordCount: wc };
 }
 /* retest patterns (§4.2) */
-const TIE_ANCHORS = [/river/, /land/, /water/, /\bhome\b/, /people/, /family|grandparents?/, /ancestor/, /\bkin\b/, /village/, /camp/, /generations/, /community/, /places/];
-const TIE_MARKERS = [/\bties\b/, /connects?/, /links?/, /\bholds\b/, /returns to/, /belongs/];
+const TIE_ANCHORS = [/river/, /land/, /water/, /\bhome\b/, /people/, /family|grandparents?/, /ancestor/, /\bkin\b/, /village/, /camp/, /generations/, /community/, /places?/, /shores?/, /banks?/, /grandm[ao]|grandmother|grandfather|nana/, /parents?/, /fish/, /burial|buried/, /two places|both places/];
+const TIE_MARKERS = [/\bties?\b/, /\btied\b|\btying\b/, /connects?/, /links?/, /\bholds\b/, /returns to/, /belongs/, /joins?|joined|joining/, /\bbinds?\b|\bbound\b|\bbinding\b/, /together/, /spans?\b/, /wove|weaves?|weaving/, /unites?\b/, /runs between|goes between/];
 function tiePattern(rawText) {
   const t = " " + rawText.toLowerCase() + " ";
   let anchors = 0; for (const rx of TIE_ANCHORS) if (rx.test(t)) anchors++;
+  // "the place I left and the place I arrived" names two anchors with
+  // one word used twice — count a repeated bare "place" as a second one
+  if ((t.match(/\bplaces?\b/g) || []).length >= 2) anchors++;
   let ties = 0; for (const rx of TIE_MARKERS) if (rx.test(t)) ties++;
   return { pass: anchors >= 2 && ties >= 1, hits: ["anchors:" + anchors, "ties:" + ties] };
 }
+/* line screen v2 (battery-widened): deciding evidence is counted in
+   GROUPS — decide-verbs, rule/claim, divide/separate, ownership,
+   boundary-as-function, control/grant, delineation. Pass needs real
+   deciding content: two groups (outweighing any container words), or
+   one deciding verb + one content group, or one content group alone.
+   A bare "decides" with no content no longer passes; container
+   phrasing alone still fails (the M3 reading), but container words no
+   longer hard-fail an answer whose deciding evidence outweighs them. */
+const LINE_GROUPS = [
+  ["decide", [/decides?\b|deciding/, /says? who\b/, /tells? (you|us|them|anyone) who\b/, /determines?\b/, /settles?\b/]],
+  ["rule", [/claims?\b|claiming/, /rules?\b|ruled\b|ruling/, /impos\w*/, /decrees?\b/]],
+  ["divide", [/divides?\b|dividing/, /separates?\b|separating/, /splits?\b/, /cuts?\b|cutting/, /carves?\b/]],
+  ["ownership", [/ownership/, /\bowns?\b|\bowned\b|\bownable\b/, /belongs? (to|with)\b/, /\bwhose\b/, /\bproperty\b/, /\bprivate\b/]],
+  ["boundary", [/marks? off\b/, /fences? (off|in|out)\b/, /(is|as|becomes|works as) (a |the |an )?boundar/, /draws? the line\b/, /lines? off\b/, /inside from outside/, /line between/]],
+  ["control", [/controls? who\b/, /keeps? (everyone else|everybody else|everyone|everybody|others|people|them) out\b/, /keeps? out\b/, /grants?\b/, /assigns?\b/]]
+];
+const LINE_CONTAINER = [/leaves? out|left out/, /only shows/, /doesn'?t show|does not show/, /\bmissing\b/, /container/, /forg(et|ot|otten)\b/];
 function linePattern(rawText) {
-  const t = " " + rawText.toLowerCase() + " ";
-  const deciding = [/decides?/, /claims?/, /rules?/, /impos/, /divides?/, /says who owns/].filter(rx => rx.test(t)).length;
-  const container = [/leaves? out|left out/, /only shows/, /doesn'?t show/, /\bmissing\b/, /container/].filter(rx => rx.test(t)).length;
-  return { pass: deciding >= 1 && container === 0, hits: ["deciding:" + deciding, "container:" + container] };
+  const t = " " + String(rawText).toLowerCase() + " ";
+  let deciding = 0, content = 0; const hitGroups = [];
+  for (const [name, rxs] of LINE_GROUPS) {
+    if (rxs.some(rx => rx.test(t))) { deciding++; hitGroups.push(name); if (name !== "decide") content++; }
+  }
+  const container = LINE_CONTAINER.filter(rx => rx.test(t)).length;
+  const pass = (deciding >= 2 && deciding > container) || (deciding >= 1 && content >= 1 && container === 0);
+  return { pass, deciding, container, byline: hitGroups.includes("boundary") ? 1 : 0,
+    hits: ["deciding:" + deciding, "container:" + container, "groups:" + hitGroups.join("+")] };
 }
 function measurePattern(rawText) {
-  const t = " " + rawText.toLowerCase() + " ";
-  const no = /\bno\b/.test(t);
-  const reason = [/measur/, /\bdata\b/, /stor/, /being in/, /relations aren'?t/, /not data/].filter(rx => rx.test(t)).length;
+  const t = " " + String(rawText).toLowerCase() + " ";
+  const no = /\bno\b/.test(t) || /\bnot\b/.test(t) || /n['’]t\b/.test(t) || /\bnever\b/.test(t);
+  const reason = [/measur/, /\bdata\b/, /stor/, /being (in|there)/, /relations aren'?t/, /not data/, /belong/, /\bties\b/, /meaning|means\b/, /relationships?/, /lived|living/, /surfaces?/, /kinship/, /ceremon/, /obligations?/, /capture|catch|hold/, /\brelations\b/, /knowing|known by/].filter(rx => rx.test(t)).length;
   return { pass: no && reason >= 1, hits: ["no:" + no, "reason:" + reason] };
 }
 
@@ -1572,6 +1601,7 @@ function freshCtx() {
 let agentCtx = freshCtx();
 function resetAgentRun() {
   agentCtx = freshCtx();
+  for (const k of Object.keys(GATE_TYPED_FAILS)) delete GATE_TYPED_FAILS[k];
   agentBusy = false; agentMode = null; tieResolve = null;
   tapActive = false; tapResolve = null; penCfg = null;
   reviewMode = reviewModeNow();
@@ -3088,6 +3118,7 @@ async function handlePointGate(raw) {
   const g = pointGate; if (!g) return;
   const pt = PointRoute.byId(g.pointId);
   const v = PointFlow.grade(g.kind, raw);
+  if (!v.pass) { const fam = GATE_FAMILY[g.kind] || g.kind; GATE_TYPED_FAILS[fam] = (GATE_TYPED_FAILS[fam] || 0) + 1; }
   __PC.noteProofSubmit();
   __WL.onSubmit();
   if (pt) recordCheckpoint(pt, g.kind, v);
@@ -3105,6 +3136,142 @@ async function handlePointGate(raw) {
   }
   g.resolve({ pass: v.pass, verdict: v });
 }
+/* ============ gate rescue ladder (v1.2) ============
+   Stay-until-proved must never mean type-forever. Typed attempts are
+   counted per concept family (GATE_FAMILY); after 2 failed typed
+   attempts in a family, the gate changes form instead of repeating:
+   first a forced-choice tap (deciding reading vs container reading
+   vs a neutral distractor), then a worked completion (the sentence
+   with the deciding word blanked, the student's word to supply).
+   Passing through a rescue proves the point exactly like a typed
+   pass does — and, like every point gate, it fills nothing by
+   itself: the piece still fills only through the sealing check /
+   retest path. */
+const GATE_FAMILY = { pp1: "parts-both", pp1a: "parts-land", pp1b: "parts-water", pp2: "line", pp2a: "line", pp2b: "story", pp3tie: "tie", pp3tie2: "tie", p4a: "measure", p4b: "constitutive" };
+const GATE_TYPED_FAILS = {};
+const RESCUE_DEFS = {
+  pp1a: { options: ["land", "water", "sky"], correct: 0,
+    frame: "Before any lines, we started with ______ and water.",
+    grade: t => /\bland\b|\bearth\b|\bground\b|\bsoil\b/.test(" " + String(t).toLowerCase() + " ") },
+  pp1b: { options: ["water", "land", "stone"], correct: 0,
+    frame: "Before any lines, we started with land and ______.",
+    grade: t => /\bwaters?\b|\brivers?\b|\bsea\b|\blakes?\b/.test(" " + String(t).toLowerCase() + " ") },
+  pp2: { options: ["It decides who owns the land inside it.", "It holds the land inside, like a container.", "It was drawn by surveyors a long time ago."], correct: 0,
+    frame: "The box ______ who owns the land inside it.",
+    grade: t => LINE_GROUPS.some(([, rxs]) => rxs.some(rx => rx.test(" " + String(t).toLowerCase() + " "))) },
+  pp2a: { options: ["It decides who owns the land inside it.", "It holds the land inside, like a container.", "It was drawn by surveyors a long time ago."], correct: 0,
+    frame: "The box ______ who owns the land inside it.",
+    grade: t => LINE_GROUPS.some(([, rxs]) => rxs.some(rx => rx.test(" " + String(t).toLowerCase() + " "))) },
+  pp2b: { options: ["The land became owned, bounded and measured — property.", "The land stayed exactly the same — only the drawing changed.", "The line was drawn in 1829."], correct: 0,
+    frame: "The line decided the land was ______, bounded and measured.",
+    grade: t => /\bowns?\b|\bowned\b|\bownership\b|belongs?|claim|property|private|\bowner\b/.test(" " + String(t).toLowerCase() + " ") },
+  pp3tie: { options: ["It ties the river to the land and the people who return to it.", "It was a trip to visit somewhere new.", "It took a long time, that is all."], correct: 0,
+    frame: "The journey ______ the river to the village.",
+    grade: t => TIE_MARKERS.some(rx => rx.test(" " + String(t).toLowerCase() + " ")) },
+  pp3tie2: { options: ["It ties the river to the land and the people who return to it.", "It was a trip to visit somewhere new.", "It took a long time, that is all."], correct: 0,
+    frame: "The journey ______ the river to the village.",
+    grade: t => TIE_MARKERS.some(rx => rx.test(" " + String(t).toLowerCase() + " ")) }
+};
+let choiceGate = null, completionGate = null;
+function hideChoices() {
+  $("check").classList.add("hidden0");
+  const box = $("checkChoices"); if (box) box.innerHTML = "";
+  document.querySelector(".check-tag").textContent = P1_TAG;
+  document.querySelector(".check-hint").textContent = "Answer below, in the ask bar.";
+  $("checkQ").textContent = CHECK_Q;
+}
+function serveChoice(pl, def, promptText) {
+  return new Promise(resolve => {
+    __PC.activate(pl.id); __PC.noteProofArm();
+    choiceGate = { resolve };
+    window.__choiceActive = true;
+    $("checkQ").textContent = promptText;
+    document.querySelector(".check-tag").textContent = "TAP ONE";
+    document.querySelector(".check-hint").textContent = "Tap the line that fits.";
+    const box = $("checkChoices"); box.innerHTML = "";
+    def.options.forEach((text, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "check-choice"; b.textContent = text;
+      b.addEventListener("click", () => {
+        if (!choiceGate) return;
+        const r = choiceGate.resolve; choiceGate = null; window.__choiceActive = false;
+        hideChoices(); r(i);
+      });
+      box.appendChild(b);
+    });
+    $("check").classList.remove("hidden0");
+    boardCap.textContent = promptText;
+  });
+}
+function serveCompletion(pl, def) {
+  return new Promise(resolve => {
+    __PC.activate(pl.id); __PC.noteProofArm(); __WL.arm();
+    completionGate = { resolve, def };
+    window.__completionActive = true;
+    boardCap.textContent = def.frame;
+    bubbleSet("Finish this line — the missing word is yours.");
+    dockInput.placeholder = "Finish the line…";
+  });
+}
+function handleCompletion(raw) {
+  const g = completionGate; if (!g) return;
+  completionGate = null; window.__completionActive = false;
+  g.resolve({ raw });
+}
+function cancelRescue() {
+  if (choiceGate) { const r = choiceGate.resolve; choiceGate = null; window.__choiceActive = false; hideChoices(); r(-2); }
+  if (completionGate) { const g = completionGate; completionGate = null; window.__completionActive = false; g.resolve({ stale: true }); }
+}
+async function settleRescueGate(pl, kind, v) {
+  __PC.noteProofSubmit(); __WL.onSubmit();
+  const pt = PointRoute.byId(pl.id) || pl;
+  if (pt) { recordCheckpoint(pt, kind, v); pt.gateAttempts++; }
+  await PointDirector.boundary(v.pass ? "proof" : "proof-fail", RUN);
+  if (v.pass) PointRoute.provePoint(pl.id);
+}
+async function serveRescue(pl, kind, promptText, runId) {
+  const def = RESCUE_DEFS[kind];
+  if (!def) return { pass: false, verdict: { pass: false, abstain: false, hits: [], type: "rescue", modality: "say", grading: "pattern-screen", aidUsed: "rescue-unavailable" } };
+  const pick = await serveChoice(pl, def, promptText);
+  if (runId !== RUN || pick === -2) return { stale: true, pass: false };
+  if (pick === def.correct) {
+    const v = { pass: true, abstain: false, hits: ["rescue-choice:deciding"], type: "forced-choice", modality: "tap", grading: "deterministic", aidUsed: "rescue-choice" };
+    await settleRescueGate(pl, kind, v);
+    return { pass: true, verdict: v };
+  }
+  const comp = await serveCompletion(pl, def);
+  if (runId !== RUN || !comp || comp.stale) return { stale: true, pass: false };
+  const pass = !!def.grade(comp.raw);
+  const v = { pass, abstain: false, hits: [pass ? "rescue-completion:supplied" : "rescue-completion:miss"], type: "worked-completion", modality: "say", grading: "pattern-screen", aidUsed: "rescue-completion" };
+  await settleRescueGate(pl, kind, v);
+  return { pass, verdict: v };
+}
+/* Serve a typed child gate with the rescue ladder armed: typed
+   attempts (with the caller's reteach between them) until the family
+   has 2 failed typed attempts, then the gate changes form. */
+async function serveGateWithRescue(pl, kind, promptText, audioKey, runId, opts = {}) {
+  const ok = () => runId === RUN;
+  const fam = GATE_FAMILY[kind] || kind;
+  let served = 0;
+  while (true) {
+    if (!ok()) return { stale: true, pass: false };
+    if ((GATE_TYPED_FAILS[fam] || 0) >= 2) {
+      const r = await serveRescue(pl, kind, promptText, runId);
+      if (!ok()) return { stale: true, pass: false };
+      return r;
+    }
+    const res = await armPointGate(pl, kind, promptText, audioKey);
+    if (!ok()) return { stale: true, pass: false };
+    if (res.pass) return res;
+    served++;
+    if ((GATE_TYPED_FAILS[fam] || 0) >= 2) continue;
+    if (opts.reteach && served < 2) { await opts.reteach(); if (!ok()) return { stale: true, pass: false }; continue; }
+    const r = await serveRescue(pl, kind, promptText, runId);
+    if (!ok()) return { stale: true, pass: false };
+    return r;
+  }
+}
+
 function tapGateRun(promptText, runId) {
   return new Promise(async resolve => {
     boardCap.textContent = promptText;
@@ -3132,12 +3299,12 @@ const PointFlow = {
     switch (kind) {
       case "pp1": {
         const hits = [];
-        if (/\bland\b/.test(t)) hits.push("land");
-        if (/\bwater\b/.test(t)) hits.push("water");
+        if (/\bland\b|\bearth\b|\bground\b|\bsoil\b/.test(t)) hits.push("land");
+        if (/\bwaters?\b|\brivers?\b|\bsea\b|\blakes?\b/.test(t)) hits.push("water");
         return { pass: hits.length === 2, abstain: hits.length === 0, hits, type: "open-production", modality: "say", grading: "pattern-screen", aidUsed: "none" };
       }
-      case "pp1a": return { pass: /\bland\b/.test(t), abstain: false, hits: /\bland\b/.test(t) ? ["land"] : [], type: "open-production", modality: "say", grading: "pattern-screen", aidUsed: "decomposition" };
-      case "pp1b": return { pass: /\bwater\b/.test(t), abstain: false, hits: /\bwater\b/.test(t) ? ["water"] : [], type: "open-production", modality: "say", grading: "pattern-screen", aidUsed: "decomposition" };
+      case "pp1a": return { pass: /\bland\b|\bearth\b|\bground\b|\bsoil\b/.test(t), abstain: false, hits: /\bland\b|\bearth\b|\bground\b|\bsoil\b/.test(t) ? ["land"] : [], type: "open-production", modality: "say", grading: "pattern-screen", aidUsed: "decomposition" };
+      case "pp1b": return { pass: /\bwaters?\b|\brivers?\b|\bsea\b|\blakes?\b/.test(t), abstain: false, hits: /\bwaters?\b|\brivers?\b|\bsea\b|\blakes?\b/.test(t) ? ["water"] : [], type: "open-production", modality: "say", grading: "pattern-screen", aidUsed: "decomposition" };
       case "pp2": case "pp2a": {
         const r = linePattern(t);
         const hits = [];
@@ -3147,10 +3314,21 @@ const PointFlow = {
         return { pass: r.pass, abstain: r.deciding === 0 && r.container === 0, hits, type: "open-production", modality: "say", grading: "pattern-screen", aidUsed: "none" };
       }
       case "pp2b": {
+        // the line's decision about the land, in content groups —
+        // pass needs TWO of them (the taught triad is owned / bounded /
+        // measured; synonyms and near-synonyms count as their group)
         let own = 0; const hits = [];
-        if (/\bowned\b/.test(t) || /\bown it\b/.test(t)) { own++; hits.push("owned"); }
-        if (/bound/.test(t)) { own++; hits.push("bounded"); }
-        if (/measur/.test(t)) { own++; hits.push("measured"); }
+        if (/\bowns?\b|\bowned\b|\bownership\b|\bownable\b/.test(t)) { own++; hits.push("owned"); }
+        if (/bound|\bedges?\b|\bfenced\b/.test(t)) { own++; hits.push("bounded"); }
+        if (/measur|survey/.test(t)) { own++; hits.push("measured"); }
+        if (/belongs?|belonged/.test(t)) { own++; hits.push("belongs"); }
+        if (/claim/.test(t)) { own++; hits.push("claimed"); }
+        if (/parcel|marked off|\blots?\b|divided/.test(t)) { own++; hits.push("parcel"); }
+        if (/\bowner\b|one owner|an owner|its owner|someone (owns|owned)/.test(t)) { own++; hits.push("owner"); }
+        if (/bought|sold|\bkept\b/.test(t)) { own++; hits.push("held"); }
+        if (/not (shared|common)|no longer shared|wasn'?t (everyone|anyone)/.test(t)) { own++; hits.push("unshared"); }
+        if (/\bprivate property\b/.test(t)) { own += 2; hits.push("private-property"); }
+        else if (/\bproperty\b|\bprivate\b/.test(t)) { own++; hits.push("property"); }
         const rep = /draw|mark|represen|shown|paper|photo|image/.test(t);
         return { pass: own >= 2, abstain: own === 0 && rep, hits, type: "open-production", modality: "say", grading: "pattern-screen", aidUsed: "decomposition" };
       }
@@ -3311,30 +3489,35 @@ const PointFlow = {
     switch (child.id) {
       case "p1a-land": case "p1b-water": {
         const kind = child.id === "p1a-land" ? "pp1a" : "pp1b";
-        for (let a = 0; a < 2; a++) {
-          await this.teachBeat(child.beat, runId); if (!ok()) return "stale";
-          const res = await armPointGate(pt, kind, child.id === "p1a-land" ? "One word this time: the first part?" : "One word this time: what moves through it?", "int_stay");
-          if (!ok()) return "stale";
-          if (res.pass) { PointRoute.provePoint(child.id); return "ok"; }
-        }
+        const prompt = child.id === "p1a-land" ? "One word this time: the first part?" : "One word this time: what moves through it?";
+        await this.teachBeat(child.beat, runId); if (!ok()) return "stale";
+        const res = await serveGateWithRescue(pt, kind, prompt, "int_stay", runId, { reteach: async () => { await this.teachBeat(child.beat, runId); } });
+        if (!ok() || res.stale) return "stale";
+        if (res.pass) { PointRoute.provePoint(child.id); return "ok"; }
         return "carry";
       }
       case "p2a-line": {
-        $("photoPanel").classList.remove("hidden0"); window.__photoShown = true; noteRepTried("real-photo");
-        boardCap.textContent = "This box began as a line on paper before it was a line on land.";
-        const s = say("This box began as a line on paper before it was a line on land.", runId);
-        await speak("bl1"); await s; if (!ok()) return "stale";
-        const res = await armPointGate(pt, "pp2a", PP2_TEXT, "pp2_prompt");
-        if (!ok()) return "stale";
+        const prelude = async () => {
+          $("photoPanel").classList.remove("hidden0"); window.__photoShown = true; noteRepTried("real-photo");
+          boardCap.textContent = "This box began as a line on paper before it was a line on land.";
+          const s = say("This box began as a line on paper before it was a line on land.", runId);
+          await speak("bl1"); await s;
+        };
+        await prelude(); if (!ok()) return "stale";
+        const res = await serveGateWithRescue(pt, "pp2a", PP2_TEXT, "pp2_prompt", runId, { reteach: prelude });
+        if (!ok() || res.stale) return "stale";
         return res.pass ? (PointRoute.provePoint(child.id), "ok") : "carry";
       }
       case "p2b-story": {
-        $("photoPanel").classList.add("hidden0");
-        boardCap.textContent = "The line decided because the land was then owned, bounded, measured.";
-        const s = say("The line decided because the land was then owned, bounded, measured.", runId);
-        await speak("bl2"); await s; if (!ok()) return "stale";
-        const res = await armPointGate(pt, "pp2b", "One line: what did the line decide about the land?", "pp2_prompt");
-        if (!ok()) return "stale";
+        const prelude = async () => {
+          $("photoPanel").classList.add("hidden0");
+          boardCap.textContent = "The line decided because the land was then owned, bounded, measured.";
+          const s = say("The line decided because the land was then owned, bounded, measured.", runId);
+          await speak("bl2"); await s;
+        };
+        await prelude(); if (!ok()) return "stale";
+        const res = await serveGateWithRescue(pt, "pp2b", "One line: what did the line decide about the land?", "pp2_prompt", runId, { reteach: prelude });
+        if (!ok() || res.stale) return "stale";
         return res.pass ? (PointRoute.provePoint(child.id), "ok") : "carry";
       }
       case "p3a-web": {
@@ -3362,12 +3545,8 @@ const PointFlow = {
         return "ok";
       }
       case "p3c-tie": {
-        let res = await armPointGate(child, "pp3tie2", PP3_TEXT, "pp3_prompt");
-        if (!ok()) return "stale";
-        if (res.pass) { PointRoute.provePoint(child.id); return "ok"; }
-        await this.teachBeat(6, runId); if (!ok()) return "stale";
-        res = await armPointGate(child, "pp3tie2", PP3_TEXT, "pp3_prompt");
-        if (!ok()) return "stale";
+        const res = await serveGateWithRescue(child, "pp3tie2", PP3_TEXT, "pp3_prompt", runId, { reteach: async () => { await this.teachBeat(6, runId); } });
+        if (!ok() || res.stale) return "stale";
         if (res.pass) { PointRoute.provePoint(child.id); return "ok"; }
         return "carry";
       }
@@ -3399,6 +3578,7 @@ function phaseNow() {
   if (tapActive) return "tap";
   if (agentMode === "probe") return "probe";
   if (agentMode === "tie") return "check";
+  if (choiceGate || completionGate) return "check";
   if (pointGate) return "check";
   if (checkArmed && !answered) return "check";
   return "lesson";
@@ -3702,6 +3882,7 @@ const INT = {
     this.state = "PLAYING"; window.__intState = "PLAYING";
     this.frame = null;
     pointGate = null;
+    cancelRescue();
     stopVoice();
     for (const tag of [...CLK_HOLDS]) unfreezeClock(tag);
     stage.classList.remove("int-on");
@@ -3759,6 +3940,10 @@ function routeDockSubmit(raw) {
   if (INT.state === "INTERRUPTED") { dockInput.value = ""; INT.answerQuestion(raw); return; }
   __WL.onSubmit();
   if (INT.softPaused) INT.softResume();
+  if (completionGate) {
+    if (isInterrogative(raw)) { dockInput.value = ""; INT.enter({ trigger: "dock", question: raw }); return; }
+    dockInput.value = ""; handleCompletion(raw); return;
+  }
   if (pointGate) {
     if (isInterrogative(raw)) { dockInput.value = ""; INT.enter({ trigger: "dock", question: raw }); return; }
     dockInput.value = ""; handlePointGate(raw); return;
@@ -3851,6 +4036,7 @@ Object.assign(window.__agent, {
 });
 window.__agent11 = Object.assign({}, window.__agent, {
   INT, PointRoute, PointClock, PointDirector, PointFlow, routeQuestion,
+  rescueState: () => ({ choice: !!choiceGate, completion: !!completionGate, gateFails: { ...GATE_TYPED_FAILS } }),
   fixture: {
     setElapsed(sec) { __PC.pieceStartReal = performance.now() - sec * 1000; },
     setPassive(ms) { if (__PC.cur) __PC.cur.passiveMs = ms; },
